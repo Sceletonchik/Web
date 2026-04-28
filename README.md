@@ -109,7 +109,7 @@ docker run -p 8008:8008 \
 
 ```bash
 cd frontend
-cp .env.example .env        # set VITE_MATRIX_HOMESERVER=http://localhost:8008
+cp .env .env        # set VITE_MATRIX_HOMESERVER=http://localhost:8008
 npm install
 npm run dev
 ```
