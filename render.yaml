@@ -1,63 +1,29 @@
 services:
-  # ── Matrix Synapse Homeserver ──────────────────────────────────────────────
+  # ── Node.js Backend ────────────────────────────────────────────────────────
   - type: web
-    name: synapse
-    runtime: docker
-    dockerfilePath: ./synapse/Dockerfile
-    dockerContext: .
-    plan: starter
-    healthCheckPath: /_matrix/client/versions
-    disk:
-      name: synapse-data
-      mountPath: /data
-      sizeGB: 10
+    name: messenger-backend
+    runtime: node
+    plan: free
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node server.js
+    healthCheckPath: /api/health
     envVars:
-      - key: SYNAPSE_SERVER_NAME
-        sync: false          # Set this to your Render service URL e.g. synapse.onrender.com
-      - key: SYNAPSE_PUBLIC_BASEURL
-        sync: false          # https://synapse.onrender.com
-      - key: POSTGRES_USER
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
         fromDatabase:
-          name: synapse-db
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: synapse-db
-          property: password
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: synapse-db
-          property: database
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: synapse-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: synapse-db
-          property: port
-      - key: SYNAPSE_REGISTRATION_SHARED_SECRET
+          name: messenger-db
+          property: connectionString
+      - key: JWT_SECRET
         generateValue: true
-      - key: SYNAPSE_MACAROON_SECRET_KEY
-        generateValue: true
-      - key: SYNAPSE_FORM_SECRET
-        generateValue: true
-      # Optional — fill in for email verification
-      - key: SMTP_HOST
-        value: ""
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        value: ""
-      - key: SMTP_PASSWORD
-        value: ""
-      - key: SMTP_FROM
-        value: ""
+      - key: CLIENT_ORIGIN
+        sync: false   # Set to your frontend URL after deploy, e.g. https://messenger-frontend.onrender.com
 
-  # ── React Frontend ─────────────────────────────────────────────────────────
+  # ── React Frontend (Static) ────────────────────────────────────────────────
   - type: web
     name: messenger-frontend
     runtime: static
+    plan: free
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: ./frontend/dist
     routes:
@@ -65,11 +31,11 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      - key: VITE_MATRIX_HOMESERVER
-        sync: false          # https://synapse.onrender.com  (set AFTER Synapse is deployed)
+      - key: VITE_API_URL
+        sync: false   # Set to your backend URL, e.g. https://messenger-backend.onrender.com
 
 databases:
-  - name: synapse-db
-    databaseName: synapse
-    user: synapse
-    plan: starter
+  - name: messenger-db
+    databaseName: messenger
+    user: messenger
+    plan: free

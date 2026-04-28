@@ -1,18 +1,20 @@
+import { useEffect } from 'react'
 import useStore from '../store'
-import { useSync } from '../hooks/useSync'
+import { useSocket } from '../hooks/useSocket'
+import * as api from '../api'
 import Sidebar from '../components/Sidebar'
 import ChatPanel from '../components/ChatPanel'
-import * as mx from '../api/matrix'
 
 export default function MessengerPage() {
-  const { homeserver, accessToken, userId, clearAuth } = useStore()
+  const { token, userId, clearAuth, setConversations } = useStore()
+  api.setToken(token)
+  useSocket()
 
-  // Boot sync loop
-  mx.setConfig(homeserver, accessToken, userId)
-  useSync()
+  useEffect(() => {
+    api.getConversations().then(setConversations).catch(() => {})
+  }, [])
 
   async function handleLogout() {
-    try { await mx.logout() } catch {}
     clearAuth()
   }
 

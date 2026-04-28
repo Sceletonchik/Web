@@ -3,6 +3,6 @@ import AuthPage from './pages/AuthPage'
 import MessengerPage from './pages/MessengerPage'
 
 export default function App() {
-  const accessToken = useStore(s => s.accessToken)
-  return accessToken ? <MessengerPage /> : <AuthPage />
+  const token = useStore(s => s.token)
+  return token ? <MessengerPage /> : <AuthPage />
 }

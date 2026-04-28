@@ -1,145 +1,122 @@
-# Matrix Messenger
+# Messenger
 
-A full-featured Matrix-based messenger. Telegram-style UX: @username search, file sharing, read receipts (double ticks), DM rooms.
+Мессенджер на Node.js + PostgreSQL + Socket.io + React.  
+Работает на **бесплатном** тарифе Render — без Docker!
 
 ---
 
-## Stack
+## Что внутри
 
-| Layer | Tech |
+| | |
 |---|---|
-| Backend | Matrix Synapse (Docker) |
-| Database | PostgreSQL (Render managed) |
-| Frontend | React + Vite + Tailwind CSS |
-| Hosting | Render (render.yaml) |
+| Backend | Node.js, Express, Socket.io, PostgreSQL (pg) |
+| Frontend | React, Vite, Tailwind CSS, Zustand |
+| Хостинг | Render (Blueprint — всё создаётся автоматически) |
+
+**Возможности:**
+- ✅ Регистрация по email + @username (как в Telegram)
+- ✅ Поиск пользователей по @username или имени
+- ✅ Личные чаты (DM)
+- ✅ Текстовые сообщения (Enter — отправить, Shift+Enter — новая строка)
+- ✅ Файлы: изображения (превью), видео, аудио, документы
+- ✅ Drag & Drop для отправки файлов
+- ✅ Статус прочтения — двойные синие галочки ✓✓ (как в Telegram)
+- ✅ Счётчик непрочитанных в сайдбаре
+- ✅ Real-time через WebSocket (Socket.io)
+- ✅ Сессия сохраняется (localStorage)
 
 ---
 
-## Deploy to Render — Step by Step
+## Деплой на Render
 
-### 1. Push to GitHub
+### Шаг 1 — Пушим в GitHub
+
+Структура репо должна быть такой (файлы в корне!):
+```
+my-repo/
+├── render.yaml
+├── .gitignore
+├── backend/
+│   ├── package.json
+│   ├── server.js
+│   └── ...
+└── frontend/
+    ├── package.json
+    ├── vite.config.js
+    └── ...
+```
 
 ```bash
-git init
 git add .
-git commit -m "initial"
-gh repo create matrix-messenger --public --push
-# or: git remote add origin <your-repo-url> && git push -u origin main
+git commit -m "init"
+git push
 ```
 
-### 2. Create Render Blueprint
+### Шаг 2 — Blueprint на Render
 
-1. Go to https://render.com → **New → Blueprint**
-2. Connect your GitHub repo
-3. Render will detect `render.yaml` and create:
-   - `synapse` — Docker web service
-   - `messenger-frontend` — Static site
-   - `synapse-db` — PostgreSQL database
+1. Зайди на **render.com** → **New** → **Blueprint**
+2. Выбери свой GitHub репо
+3. Render найдёт `render.yaml` и создаст:
+   - `messenger-backend` — Node.js сервис
+   - `messenger-frontend` — Static сайт
+   - `messenger-db` — PostgreSQL база
 
-### 3. Set Required Environment Variables
+### Шаг 3 — Переменные окружения
 
-After blueprint is created, open the **synapse** service → **Environment**:
+После создания сервисов:
 
-| Variable | Value |
+**В `messenger-backend` → Environment добавь:**
+| Переменная | Значение |
 |---|---|
-| `SYNAPSE_SERVER_NAME` | Your synapse URL **without** `https://` e.g. `synapse.onrender.com` |
-| `SYNAPSE_PUBLIC_BASEURL` | Full URL e.g. `https://synapse.onrender.com` |
+| `CLIENT_ORIGIN` | URL фронтенда, например `https://messenger-frontend.onrender.com` |
+| `BACKEND_URL` | URL бэкенда, например `https://messenger-backend.onrender.com` |
 
-> The database variables are auto-filled from the managed DB.
+> `DATABASE_URL` и `JWT_SECRET` заполняются автоматически из `render.yaml`
 
-### 4. Set Frontend Variable
-
-Open **messenger-frontend** → **Environment**:
-
-| Variable | Value |
+**В `messenger-frontend` → Environment добавь:**
+| Переменная | Значение |
 |---|---|
-| `VITE_MATRIX_HOMESERVER` | `https://synapse.onrender.com` |
+| `VITE_API_URL` | URL бэкенда, например `https://messenger-backend.onrender.com` |
 
-### 5. Deploy
+### Шаг 4 — Редеплой фронтенда
 
-Click **Manual Deploy** on both services (or push a commit). Synapse takes ~2 min on first boot (generates keys).
+После установки `VITE_API_URL` нажми **Manual Deploy** на фронтенде —  
+переменные Vite встраиваются в билд, поэтому нужен пересбор.
 
-### 6. Test
+### Шаг 5 — Готово!
 
-Open your frontend URL → Register with any `@username` → Start chatting!
+Открой URL фронтенда → Регистрируйся → Ищи других пользователей по @username → Пиши!
 
 ---
 
-## Optional: Enable Email Verification
+## Локальная разработка
 
-Set these on the `synapse` service:
+### Требования
+- Node.js 18+
+- PostgreSQL
 
-```
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=you@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM=you@gmail.com
-```
-
-Then in `synapse/start.sh` remove or comment out:
-```yaml
-enable_registration_without_verification: true
-```
-
----
-
-## Local Development
-
-### Run Synapse locally (Docker)
-
+### Backend
 ```bash
-docker build -t synapse ./synapse
-docker run -p 8008:8008 \
-  -e SYNAPSE_SERVER_NAME=localhost \
-  -e SYNAPSE_PUBLIC_BASEURL=http://localhost:8008 \
-  -e POSTGRES_USER=synapse \
-  -e POSTGRES_PASSWORD=synapse \
-  -e POSTGRES_DB=synapse \
-  -e POSTGRES_HOST=host.docker.internal \
-  -e POSTGRES_PORT=5432 \
-  -e SYNAPSE_REGISTRATION_SHARED_SECRET=devsecret \
-  -e SYNAPSE_MACAROON_SECRET_KEY=devmacaroon \
-  -e SYNAPSE_FORM_SECRET=devform \
-  -v synapse-data:/data \
-  synapse
+cd backend
+cp .env .env    # заполни DATABASE_URL
+npm install
+node server.js
 ```
 
-### Run Frontend
-
+### Frontend
 ```bash
 cd frontend
-cp .env .env        # set VITE_MATRIX_HOMESERVER=http://localhost:8008
+cp .env .env    # VITE_API_URL=http://localhost:4000
 npm install
 npm run dev
 ```
 
-`.env.example`:
-```
-VITE_MATRIX_HOMESERVER=http://localhost:8008
-```
-
 ---
 
-## Features
+## Заметки
 
-- ✅ Register / Login with `@username`
-- ✅ Search users by username or display name
-- ✅ One-to-one DM rooms (auto-created)
-- ✅ Send text messages (Enter to send, Shift+Enter for newline)
-- ✅ Send files: images (preview), video, audio, documents
-- ✅ Drag & drop file upload
-- ✅ Read receipts — Telegram-style double blue ticks ✓✓
-- ✅ Unread badge on sidebar
-- ✅ Long-polling sync (real-time updates)
-- ✅ Persistent session (localStorage)
-- ✅ Colour avatars with initials fallback
-
----
-
-## Notes
-
-- Render free tier spins down after inactivity — first load may be slow.  
-  Upgrade to **Starter** plan to keep services always on.
-- Media files are stored on Synapse's persistent disk (10 GB included).
-- The `user_directory.search_all_users: true` setting lets users find each other even if they have no common rooms.
+- Render free tier "засыпает" после 15 минут неактивности.  
+  Первый запрос после сна занимает ~30 сек. Для продакшена — апгрейд до Starter.
+- Загруженные файлы хранятся локально в папке `uploads/`.  
+  На Render free tier диск **не персистентный** — файлы сбрасываются при рестарте.  
+  Для продакшена подключи S3 или Cloudinary.
